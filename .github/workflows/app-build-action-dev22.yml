@@ -1,4 +1,4 @@
-name: app-build-action-dev22
+name: app-build-action-dev
 
 on:
   workflow_dispatch:
@@ -53,13 +53,20 @@ jobs:
       # APK签名设置
       - name: Setup Android Signing
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > simple_live_app/android/keystore.jks
+          mkdir -p simple_live_app/android
+          echo '${{ secrets.KEYSTORE_BASE64 }}' | base64 -d > simple_live_app/android/keystore.jks
           cat > simple_live_app/android/key.properties << EOF
-          storeFile=keystore.jks
-          storePassword=${{ secrets.STORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          EOF
+storeFile=keystore.jks
+storePassword=${{ secrets.STORE_PASSWORD }}
+keyPassword=${{ secrets.KEY_PASSWORD }}
+keyAlias=${{ secrets.KEY_ALIAS }}
+EOF
+
+      # 调试步骤 - 验证密钥库
+      - name: Debug - Verify Keystore
+        run: |
+          echo "Checking keystore integrity..."
+          keytool -list -v -keystore simple_live_app/android/keystore.jks -storepass "${{ secrets.STORE_PASSWORD }}" && echo "Keystore is valid" || echo "Keystore check failed"
 
       # 打包APK
       - name: Build APK
@@ -67,7 +74,7 @@ jobs:
           cd simple_live_app
           flutter build apk --release --split-per-abi
 
-      #上传Artifacts
+      # 上传APK到Artifacts
       - name: Upload APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -77,34 +84,41 @@ jobs:
       # TV APK签名设置
       - name: Setup Android TV Signing
         run: |
-          echo "${{ secrets.TV_KEYSTORE_BASE64 }}" | base64 -d > simple_live_tv_app/android/keystore_tv.jks
+          mkdir -p simple_live_tv_app/android
+          echo '${{ secrets.TV_KEYSTORE_BASE64 }}' | base64 -d > simple_live_tv_app/android/keystore_tv.jks
           cat > simple_live_tv_app/android/key.properties << EOF
-          storeFile=keystore_tv.jks
-          storePassword=${{ secrets.TV_STORE_PASSWORD }}
-          keyPassword=${{ secrets.TV_KEY_PASSWORD }}
-          keyAlias=${{ secrets.TV_KEY_ALIAS }}
-          EOF
+storeFile=keystore_tv.jks
+storePassword=${{ secrets.TV_STORE_PASSWORD }}
+keyPassword=${{ secrets.TV_KEY_PASSWORD }}
+keyAlias=${{ secrets.TV_KEY_ALIAS }}
+EOF
 
-      #打包 Android TV APK
+      # 调试步骤 - 验证TV密钥库
+      - name: Debug - Verify TV Keystore
+        run: |
+          echo "Checking TV keystore integrity..."
+          keytool -list -v -keystore simple_live_tv_app/android/keystore_tv.jks -storepass "${{ secrets.TV_STORE_PASSWORD }}" && echo "TV Keystore is valid" || echo "TV Keystore check failed"
+
+      # 打包 Android TV APK
       - name: Build TV APK
         run: |
           cd simple_live_tv_app
           flutter build apk --release --split-per-abi
-          
-      #上传TV APK至Artifacts
+
+      # 上传TV APK到Artifacts
       - name: Upload TV APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android_tv
           path: simple_live_tv_app/build/app/outputs/flutter-apk/*-release.apk
 
-      #打包iOS
+      # 打包iOS
       - name: Build IPA
         run: |
           cd simple_live_app
           flutter build ios --release --no-codesign
 
-      #创建未签名ipa
+      # 创建未签名ipa
       - name: Create IPA
         run: |
           cd simple_live_app/build/ios/iphoneos
@@ -133,7 +147,7 @@ jobs:
           name: mac
           path: simple_live_app/build/dist/*/*
 
-      #完成
+      # 完成
       - name: Final Status
         run: echo "🍏 This job's status is ${{ job.status }}."
 
@@ -188,7 +202,7 @@ jobs:
           name: linux
           path: simple_live_app/build/dist/*/*
           
-      #完成
+      # 完成
       - name: Final Status
         run: echo "🍏 Linux job's status is ${{ job.status }}."
 
@@ -235,6 +249,6 @@ jobs:
           name: windows
           path: simple_live_app/build/dist/*/*
           
-      #完成
+      # 完成
       - name: Final Status
         run: echo "🍏 Windows job's status is ${{ job.status }}."
